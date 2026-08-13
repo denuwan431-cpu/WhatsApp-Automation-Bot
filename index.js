@@ -125,7 +125,6 @@ async function connectToWhatsApp() {
         logger: pino({ level: 'silent' })
     });
 
-    // ඔබගේ වට්ස්ඇප් අංකය මෙහි සඳහන් කරන්න (Country code සමඟ, + ලකුණු නොමැතිව)
     const phoneNumber = "94706647016"; 
 
     if (!sock.authState.creds.registered) {
@@ -156,15 +155,4 @@ async function connectToWhatsApp() {
     });
 
     sock.ev.on('creds.update', saveCreds);
-
-    // මැසේජ් ලැබෙන විට ටයිපිං ස්ටේටස් හෝ ඔන්ලයින් පෙන්වීම පාලනය කිරීම
-    sock.ev.on('messages.upsert', async ({ messages }) => {
-        const m = messages[0];
-        if (!m.message || m.key.fromMe) return;
-
-        const remoteJid = m.key.remoteJid;
-
-        // ඔබ මැසේජ් එකක් කියවන විට 'typing' පෙන්වීම වැළැක්වීමට මෙය ක්‍රියාත්මක වේ
-        await sock.sendPresenceUpdate('unavailable', remoteJid);
-    });
 }
