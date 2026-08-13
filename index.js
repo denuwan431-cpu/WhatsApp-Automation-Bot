@@ -1,7 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const { default: makeWASocket, initAuthCreds, DisconnectReason } = require('@whiskeysockets/baileys');
-const qrcode = require('qrcode-terminal');
+const pino = require('pino');
 
 // --- 1. Express Server Setup ---
 const app = express();
@@ -115,30 +115,43 @@ const useMongoAuthState = async () => {
     };
 };
 
-// --- 3. WhatsApp Bot Main Logic ---
+// --- 3. WhatsApp Bot Main Logic (Pairing Code Mode) ---
 async function connectToWhatsApp() {
     const { state, saveCreds } = await useMongoAuthState();
 
     const sock = makeWASocket({
         auth: state,
-        printQRInTerminal: true
+        printQRInTerminal: false,
+        logger: pino({ level: 'silent' })
     });
 
-    sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect, qr } = update;
-        
-        if (qr) {
-            qrcode.generate(qr, { small: true });
-        }
+    // මෙහි "947XXXXXXXX" වෙනුවට ඔබේ WhatsApp අංකය රටේ කේතය සමඟ (උදා: 94712345678) ලියන්න (+ ලකුණු නැතුව)
+    const phoneNumber = "947XXXXXXXX"; 
 
+    if (!sock.authState.creds.registered) {
+        setTimeout(async () => {
+            try {
+                let code = await sock.requestPairingCode(phoneNumber);
+                console.log(`\n========================================`);
+                console.log(`YOUR WHATSAPP PAIRING CODE IS: ${code}`);
+                console.log(`========================================\n`);
+            } catch (error) {
+                console.error("Error requesting pairing code:", error);
+            }
+        }, 3000);
+    }
+
+    sock.ev.on('connection.update', (update) => {
+        const { connection, lastDisconnect } = update;
+        
         if (connection === 'close') {
             const shouldReconnect = (lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut;
-            console.log('Connection closed due to ', lastDisconnect?.error, ', reconnecting ', shouldReconnect);
+            console.log('Connection closed, reconnecting...', shouldReconnect);
             if (shouldReconnect) {
                 connectToWhatsApp();
             }
         } else if (connection === 'open') {
-            console.log('Bot Successfully Connected!');
+            console.log('Bot Successfully Connected via Pairing Code!');
         }
     });
 
