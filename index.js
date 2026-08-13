@@ -1,7 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const { default: makeWASocket, initAuthCreds, DisconnectReason } = require('@whiskeysockets/baileys');
-const qrcode = require('qrcode');
+const qrcode = require('qrcode-terminal');
 
 // --- 1. Express Server Setup ---
 const app = express();
@@ -121,22 +121,14 @@ async function connectToWhatsApp() {
 
     const sock = makeWASocket({
         auth: state,
-        printQRInTerminal: false
+        printQRInTerminal: true
     });
 
-    sock.ev.on('connection.update', async (update) => {
+    sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect, qr } = update;
         
         if (qr) {
-            console.log('--- SCAN THIS QR CODE LINK ---');
-            try {
-                // QR එක ලස්සනට පේන URL එකක් ලෙස ලොග්ස් වලට ලබා දීම
-                const qrImageUrl = await qrcode.toDataURL(qr);
-                console.log('Copy this link and open in your browser:');
-                console.log(qrImageUrl);
-            } catch (err) {
-                console.log('Error generating QR code URL:', err);
-            }
+            qrcode.generate(qr, { small: true });
         }
 
         if (connection === 'close') {
