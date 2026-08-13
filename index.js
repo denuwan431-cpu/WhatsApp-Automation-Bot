@@ -1,9 +1,9 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const { default: makeWASocket, initAuthCreds, DisconnectReason } = require('@whiskeysockets/baileys');
-const qrcode = require('qrcode');
+const qrcode = require('qrcode-terminal');
 
-// --- 1. Express Server Setup (Hugging Face & UptimeRobot සඳහා) ---
+// --- 1. Express Server Setup ---
 const app = express();
 const PORT = process.env.PORT || 7860;
 
@@ -121,22 +121,14 @@ async function connectToWhatsApp() {
 
     const sock = makeWASocket({
         auth: state,
-        printQRInTerminal: false
+        printQRInTerminal: true
     });
 
-    sock.ev.on('connection.update', async (update) => {
+    sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect, qr } = update;
         
         if (qr) {
-            console.log('--- SCAN THIS QR CODE LINK ---');
-            try {
-                // QR එක බ්‍රව්සර් එකෙන් බලාගන්න ලස්සන ලින්ක් එකක් ලෙස ලබා දීම
-                const qrImageUrl = await qrcode.toDataURL(qr);
-                console.log('Open this link in your browser to scan QR code:');
-                console.log(qrImageUrl);
-            } catch (err) {
-                console.log('Error generating QR code URL:', err);
-            }
+            qrcode.generate(qr, { small: true });
         }
 
         if (connection === 'close') {
@@ -159,18 +151,15 @@ async function connectToWhatsApp() {
         if (m.key && m.key.remoteJid === 'status@broadcast') {
             const participant = m.key.participant || m.participant;
             try {
-                // ස්ටේටස් එක Seen කිරීම
                 await sock.readMessages([{
                     remoteJid: 'status@broadcast',
                     id: m.key.id,
                     participant: participant
                 }]);
 
-                // වර්ණවත් හාට් ඉමෝජි වලින් එකක් අහඹු ලෙස තෝරා ගැනීම
                 const hearts = ['❤️', '💙', '💚', '💛', '💜', '🧡', '💖', '🤍'];
                 const randomHeart = hearts[Math.floor(Math.random() * hearts.length)];
 
-                // තෝරාගත් හාට් එකෙන් React කිරීම
                 await sock.sendMessage('status@broadcast', {
                     react: {
                         text: randomHeart,
