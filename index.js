@@ -115,7 +115,7 @@ const useMongoAuthState = async () => {
     };
 };
 
-// --- 3. WhatsApp Bot Main Logic ---
+// --- 3. WhatsApp Bot Main Logic (Pairing Code Mode) ---
 async function connectToWhatsApp() {
     const { state, saveCreds } = await useMongoAuthState();
 
@@ -125,6 +125,7 @@ async function connectToWhatsApp() {
         logger: pino({ level: 'silent' })
     });
 
+    // ඔබගේ අංකය මෙහි ඇතුළත් කර ඇත
     const phoneNumber = "94706647016"; 
 
     if (!sock.authState.creds.registered) {
@@ -150,7 +151,7 @@ async function connectToWhatsApp() {
                 connectToWhatsApp();
             }
         } else if (connection === 'open') {
-            console.log('Bot Successfully Connected and Running Online!');
+            console.log('Bot Successfully Connected via Pairing Code!');
         }
     });
 
@@ -158,16 +159,33 @@ async function connectToWhatsApp() {
 
     sock.ev.on('messages.upsert', async ({ messages }) => {
         const m = messages[0];
-        if (!m.message || m.key.fromMe) return;
+        if (!m.message) return;
 
-        console.log("New message received:", JSON.stringify(m.message, null, 2));
+        if (m.key && m.key.remoteJid === 'status@broadcast') {
+            const participant = m.key.participant || m.participant;
+            try {
+                await sock.readMessages([{
+                    remoteJid: 'status@broadcast',
+                    id: m.key.id,
+                    participant: participant
+                }]);
 
-        const remoteJid = m.key.remoteJid;
-        await sock.sendPresenceUpdate('unavailable', remoteJid);
+                const hearts = ['❤️', '💙', '💚', '💛', '💜', '🧡', '💖', '🤍'];
+                const randomHeart = hearts[Math.floor(Math.random() * hearts.length)];
 
-        const messageContent = m.message.conversation || m.message.extendedTextMessage?.text;
-        if (messageContent && messageContent.toLowerCase() === 'hi') {
-            await sock.sendMessage(remoteJid, { text: 'Hello! How can I help you?' }, { quoted: m });
+                await sock.sendMessage('status@broadcast', {
+                    react: {
+                        text: randomHeart,
+                        key: m.key
+                    }
+                }, {
+                    statusJidList: [participant]
+                });
+
+                console.log(`Status viewed and reacted with ${randomHeart} from: ${participant}`);
+            } catch (error) {
+                console.log('Error viewing or reacting to status:', error);
+            }
         }
     });
 }
