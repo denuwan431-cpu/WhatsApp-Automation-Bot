@@ -1,0 +1,14 @@
+{
+  "name": "whatsapp-status-bot",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "latest",
+    "express": "^4.19.2",
+    "mongoose": "^8.4.0",
+    "qrcode-terminal": "^0.12.0"
+  }
+}
