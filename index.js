@@ -156,17 +156,15 @@ async function connectToWhatsApp() {
 
     sock.ev.on('creds.update', saveCreds);
 
-    // මැසේජ් ලැබෙන විට ක්‍රියාත්මක වන කොටස (Reply / Auto-reply කරන විට Typing Hide කිරීම සඳහා)
     sock.ev.on('messages.upsert', async ({ messages }) => {
         const m = messages[0];
         if (!m.message || m.key.fromMe) return;
 
-        const remoteJid = m.key.remoteJid;
+        console.log("New message received:", JSON.stringify(m.message, null, 2));
 
-        // මෙහිදී බොට් එකෙන් යම් ප්‍රතිචාරයක් (Reply එකක්) යවන විට 'typing' පෙන්වීම වැළැක්වීමට 'unavailable' යොදා ඇත
+        const remoteJid = m.key.remoteJid;
         await sock.sendPresenceUpdate('unavailable', remoteJid);
 
-        // උදාහරණයක් ලෙස කවුරුහරි 'hi' කිව්වොත් රිප්ලයි එකක් දීමට අවශ්‍ය නම් මෙහි පහළින් කෝඩ් එක එකතු කළ හැක:
         const messageContent = m.message.conversation || m.message.extendedTextMessage?.text;
         if (messageContent && messageContent.toLowerCase() === 'hi') {
             await sock.sendMessage(remoteJid, { text: 'Hello! How can I help you?' }, { quoted: m });
