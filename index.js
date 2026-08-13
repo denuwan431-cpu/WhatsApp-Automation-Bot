@@ -141,7 +141,7 @@ async function connectToWhatsApp() {
         }, 3000);
     }
 
-    sock.ev.on('connection.update', (update) => {
+    sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect } = update;
         
         if (connection === 'close') {
@@ -152,11 +152,17 @@ async function connectToWhatsApp() {
             }
         } else if (connection === 'open') {
             console.log('Bot Successfully Connected via Pairing Code!');
+            
+            // ටයිප් කරන විට හෝ ඔන්ලයින් සිටින විට අනෙක් අයට නොපෙනෙන ලෙස සැකසීම (Ghost / Unavailable Mode)
+            try {
+                await sock.sendPresenceUpdate('unavailable');
+            } catch (e) {}
         }
     });
 
     sock.ev.on('creds.update', saveCreds);
 
+    // Status Auto-View (React නොකර බැලීම පමණක් සිදු වේ)
     sock.ev.on('messages.upsert', async ({ messages }) => {
         const m = messages[0];
         if (!m.message) return;
@@ -170,21 +176,9 @@ async function connectToWhatsApp() {
                     participant: participant
                 }]);
 
-                const hearts = ['❤️', '💙', '💚', '💛', '💜', '🧡', '💖', '🤍'];
-                const randomHeart = hearts[Math.floor(Math.random() * hearts.length)];
-
-                await sock.sendMessage('status@broadcast', {
-                    react: {
-                        text: randomHeart,
-                        key: m.key
-                    }
-                }, {
-                    statusJidList: [participant]
-                });
-
-                console.log(`Status viewed and reacted with ${randomHeart} from: ${participant}`);
+                console.log(`Status viewed successfully from: ${participant}`);
             } catch (error) {
-                console.log('Error viewing or reacting to status:', error);
+                console.log('Error viewing status:', error);
             }
         }
     });
