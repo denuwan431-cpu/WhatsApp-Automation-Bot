@@ -1,7 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const { default: makeWASocket, initAuthCreds, DisconnectReason } = require('@whiskeysockets/baileys');
-const qrcode = require('qrcode-terminal');
+const qrcode = require('qrcode');
 
 // --- 1. Express Server Setup ---
 const app = express();
@@ -15,7 +15,7 @@ app.listen(PORT, () => {
     console.log(`Express server is running on port ${PORT}`);
 });
 
-// --- 2. MongoDB Atlas Connection & Auth State Adapter ---
+// --- 2. MongoDB Atlas Connection ---
 const mongoURI = process.env.MONGO_URI;
 if (!mongoURI) {
     console.error('Please set MONGO_URI in Environment Variables!');
@@ -121,14 +121,22 @@ async function connectToWhatsApp() {
 
     const sock = makeWASocket({
         auth: state,
-        printQRInTerminal: true
+        printQRInTerminal: false
     });
 
-    sock.ev.on('connection.update', (update) => {
+    sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update;
         
         if (qr) {
-            qrcode.generate(qr, { small: true });
+            console.log('--- SCAN THIS QR CODE LINK ---');
+            try {
+                // QR එක ලස්සනට පේන URL එකක් ලෙස ලොග්ස් වලට ලබා දීම
+                const qrImageUrl = await qrcode.toDataURL(qr);
+                console.log('Copy this link and open in your browser:');
+                console.log(qrImageUrl);
+            } catch (err) {
+                console.log('Error generating QR code URL:', err);
+            }
         }
 
         if (connection === 'close') {
