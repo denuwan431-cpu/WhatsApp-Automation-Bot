@@ -115,7 +115,7 @@ const useMongoAuthState = async () => {
     };
 };
 
-// --- 3. WhatsApp Bot Main Logic (Pairing Code Mode) ---
+// --- 3. WhatsApp Bot Main Logic ---
 async function connectToWhatsApp() {
     const { state, saveCreds } = await useMongoAuthState();
 
@@ -125,7 +125,7 @@ async function connectToWhatsApp() {
         logger: pino({ level: 'silent' })
     });
 
-    // ඔබගේ අංකය මෙහි ඇතුළත් කර ඇත
+    // ඔබගේ වට්ස්ඇප් අංකය මෙහි සඳහන් කරන්න (Country code සමඟ, + ලකුණු නොමැතිව)
     const phoneNumber = "94706647016"; 
 
     if (!sock.authState.creds.registered) {
@@ -151,41 +151,20 @@ async function connectToWhatsApp() {
                 connectToWhatsApp();
             }
         } else if (connection === 'open') {
-            console.log('Bot Successfully Connected via Pairing Code!');
+            console.log('Bot Successfully Connected and Running Online!');
         }
     });
 
     sock.ev.on('creds.update', saveCreds);
 
+    // මැසේජ් ලැබෙන විට ටයිපිං ස්ටේටස් හෝ ඔන්ලයින් පෙන්වීම පාලනය කිරීම
     sock.ev.on('messages.upsert', async ({ messages }) => {
         const m = messages[0];
-        if (!m.message) return;
+        if (!m.message || m.key.fromMe) return;
 
-        if (m.key && m.key.remoteJid === 'status@broadcast') {
-            const participant = m.key.participant || m.participant;
-            try {
-                await sock.readMessages([{
-                    remoteJid: 'status@broadcast',
-                    id: m.key.id,
-                    participant: participant
-                }]);
+        const remoteJid = m.key.remoteJid;
 
-                const hearts = ['❤️', '💙', '💚', '💛', '💜', '🧡', '💖', '🤍'];
-                const randomHeart = hearts[Math.floor(Math.random() * hearts.length)];
-
-                await sock.sendMessage('status@broadcast', {
-                    react: {
-                        text: randomHeart,
-                        key: m.key
-                    }
-                }, {
-                    statusJidList: [participant]
-                });
-
-                console.log(`Status viewed and reacted with ${randomHeart} from: ${participant}`);
-            } catch (error) {
-                console.log('Error viewing or reacting to status:', error);
-            }
-        }
+        // ඔබ මැසේජ් එකක් කියවන විට 'typing' පෙන්වීම වැළැක්වීමට මෙය ක්‍රියාත්මක වේ
+        await sock.sendPresenceUpdate('unavailable', remoteJid);
     });
 }
