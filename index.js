@@ -125,8 +125,8 @@ async function connectToWhatsApp() {
         logger: pino({ level: 'silent' })
     });
 
-    // මෙහි "947XXXXXXXX" වෙනුවට ඔබේ WhatsApp අංකය රටේ කේතය සමඟ (උදා: 94712345678) ලියන්න (+ ලකුණු නැතුව)
-    const phoneNumber = "947XXXXXXXX"; 
+    // ඔබගේ අංකය මෙහි ඇතුළත් කර ඇත
+    const phoneNumber = "94706647016"; 
 
     if (!sock.authState.creds.registered) {
         setTimeout(async () => {
