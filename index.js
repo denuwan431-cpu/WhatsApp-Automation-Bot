@@ -188,7 +188,7 @@ async function connectToWhatsApp() {
                 try {
                     console.log(`Call received from: ${call.from}`);
                     await sock.sendMessage(call.from, { 
-                        text: '🚫 I am busy right now, please send a text message instead of calling! 📱' 
+                        text: '🚫 I am busy right now, please send a text message instead of calling! ' 
                     });
                 } catch (error) {
                     console.log('Error sending message for call:', error);
