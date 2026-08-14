@@ -152,7 +152,6 @@ async function connectToWhatsApp() {
         } else if (connection === 'open') {
             console.log('Bot Successfully Connected via Pairing Code!');
             
-            // ඔන්ලයින් සිටින විට හෝ ටයිප් කරන විට අනෙක් අයට නොපෙනෙන ලෙස සැකසීම (Unavailable Mode)
             try {
                 await sock.sendPresenceUpdate('unavailable');
             } catch (e) {}
@@ -166,7 +165,7 @@ async function connectToWhatsApp() {
         const m = messages[0];
         if (!m.message) return;
 
-        // 1. Status Auto-View (භාවිතා කරන්නන්ගේ ස්ටේටස් ස්වයංක්‍රීයව බැලීම)
+        // Status Auto-View
         if (m.key && m.key.remoteJid === 'status@broadcast') {
             const participant = m.key.participant || m.participant;
             try {
@@ -182,19 +181,17 @@ async function connectToWhatsApp() {
         }
     });
 
-    // 2. Anti-Call Feature (කෝල් එකක් ආවොත් ස්වයංක්‍රීයව කට් කර මැසේජ් යැවීම)
+    // Auto-Reply Message on Incoming Call
     sock.ev.on('call', async (calls) => {
         for (const call of calls) {
             if (call.status === 'offer') {
                 try {
-                    await sock.rejectCall(call.id, call.from);
-                    console.log(`Call automatically rejected from: ${call.from}`);
-
+                    console.log(`Call received from: ${call.from}`);
                     await sock.sendMessage(call.from, { 
-                        text: 'මම දැනට කාර්යබහුලයි, කරුණාකර කෝල් නොකර මැසේජ් එකක් දාන්න.' 
+                        text: '🚫 I am busy right now, please send a text message instead of calling! 📱' 
                     });
                 } catch (error) {
-                    console.log('Error rejecting call:', error);
+                    console.log('Error sending message for call:', error);
                 }
             }
         }
