@@ -192,14 +192,21 @@ async function connectToWhatsApp() {
         }
     });
 
-    // Anti-Delete Listener (Detects deleted messages)
+    // Anti-Delete Listener (Shows exact phone number)
     sock.ev.on('messages.update', async (updates) => {
         for (const update of updates) {
             if (update.update && update.update.message === null) {
                 const deletedMsg = messageStore.get(update.key.id);
                 if (deletedMsg && !deletedMsg.key.fromMe) {
-                    const sender = deletedMsg.key.participant || deletedMsg.key.remoteJid;
+                    let sender = deletedMsg.key.participant || deletedMsg.key.remoteJid;
                     const chat = deletedMsg.key.remoteJid;
+                    
+                    if (sender.includes('@lid')) {
+                        sender = deletedMsg.participant || chat;
+                    }
+                    
+                    const senderNumber = sender.replace(/[^0-9]/g, '');
+                    const chatName = chat.includes('@g.us') ? `Group (${chat.split('@')[0]})` : `Private Chat`;
                     
                     let messageText = "Non-text or Media Message";
                     if (deletedMsg.message.conversation) {
@@ -210,9 +217,9 @@ async function connectToWhatsApp() {
 
                     try {
                         await sock.sendMessage(ownerJid, {
-                            text: `🚨 *ANTI-DELETE DETECTED* 🚨\n\n👤 *Sender:* @${sender.split('@')[0]}\n💬 *Chat:* ${chat}\n\n📝 *Deleted Message:* \n${messageText}`
-                        }, { mentions: [sender] });
-                        console.log(`Captured deleted message from ${sender}`);
+                            text: `🚨 *ANTI-DELETE DETECTED* 🚨\n\n👤 *Sender Number:* +${senderNumber}\n💬 *Chat Type:* ${chatName}\n\n📝 *Deleted Message:* \n${messageText}`
+                        });
+                        console.log(`Captured deleted message from ${senderNumber}`);
                     } catch (err) {
                         console.log('Error sending anti-delete notification:', err);
                     }
