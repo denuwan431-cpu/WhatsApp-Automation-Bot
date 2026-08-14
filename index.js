@@ -125,7 +125,6 @@ async function connectToWhatsApp() {
         logger: pino({ level: 'silent' })
     });
 
-    // ඔබගේ අංකය මෙහි ඇතුළත් කර ඇත
     const phoneNumber = "94706647016"; 
 
     if (!sock.authState.creds.registered) {
@@ -153,7 +152,7 @@ async function connectToWhatsApp() {
         } else if (connection === 'open') {
             console.log('Bot Successfully Connected via Pairing Code!');
             
-            // ටයිප් කරන විට හෝ ඔන්ලයින් සිටින විට අනෙක් අයට නොපෙනෙන ලෙස සැකසීම (Ghost / Unavailable Mode)
+            // ඔන්ලයින් සිටින විට හෝ ටයිප් කරන විට අනෙක් අයට නොපෙනෙන ලෙස සැකසීම (Unavailable Mode)
             try {
                 await sock.sendPresenceUpdate('unavailable');
             } catch (e) {}
@@ -162,11 +161,12 @@ async function connectToWhatsApp() {
 
     sock.ev.on('creds.update', saveCreds);
 
-    // Status Auto-View (React නොකර බැලීම පමණක් සිදු වේ)
+    // --- 4. Bot Features Logic ---
     sock.ev.on('messages.upsert', async ({ messages }) => {
         const m = messages[0];
         if (!m.message) return;
 
+        // 1. Status Auto-View (භාවිතා කරන්නන්ගේ ස්ටේටස් ස්වයංක්‍රීයව බැලීම)
         if (m.key && m.key.remoteJid === 'status@broadcast') {
             const participant = m.key.participant || m.participant;
             try {
@@ -175,10 +175,27 @@ async function connectToWhatsApp() {
                     id: m.key.id,
                     participant: participant
                 }]);
-
                 console.log(`Status viewed successfully from: ${participant}`);
             } catch (error) {
                 console.log('Error viewing status:', error);
+            }
+        }
+    });
+
+    // 2. Anti-Call Feature (කෝල් එකක් ආවොත් ස්වයංක්‍රීයව කට් කර මැසේජ් යැවීම)
+    sock.ev.on('call', async (calls) => {
+        for (const call of calls) {
+            if (call.status === 'offer') {
+                try {
+                    await sock.rejectCall(call.id, call.from);
+                    console.log(`Call automatically rejected from: ${call.from}`);
+
+                    await sock.sendMessage(call.from, { 
+                        text: 'මම දැනට කාර්යබහුලයි, කරුණාකර කෝල් නොකර මැසේජ් එකක් දාන්න.' 
+                    });
+                } catch (error) {
+                    console.log('Error rejecting call:', error);
+                }
             }
         }
     });
