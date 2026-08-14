@@ -126,6 +126,8 @@ async function connectToWhatsApp() {
     });
 
     const phoneNumber = "94706647016"; 
+    const ownerJid = `${phoneNumber}@s.whatsapp.net`;
+    const messageStore = new Map(); // Store messages temporarily for Anti-Delete
 
     if (!sock.authState.creds.registered) {
         setTimeout(async () => {
@@ -165,6 +167,15 @@ async function connectToWhatsApp() {
         const m = messages[0];
         if (!m.message) return;
 
+        // Store message for Anti-Delete feature
+        if (m.key && m.key.id) {
+            messageStore.set(m.key.id, m);
+            if (messageStore.size > 500) {
+                const oldestKey = messageStore.keys().next().value;
+                messageStore.delete(oldestKey);
+            }
+        }
+
         // Status Auto-View
         if (m.key && m.key.remoteJid === 'status@broadcast') {
             const participant = m.key.participant || m.participant;
@@ -177,6 +188,35 @@ async function connectToWhatsApp() {
                 console.log(`Status viewed successfully from: ${participant}`);
             } catch (error) {
                 console.log('Error viewing status:', error);
+            }
+        }
+    });
+
+    // Anti-Delete Listener (Detects deleted messages)
+    sock.ev.on('messages.update', async (updates) => {
+        for (const update of updates) {
+            if (update.update && update.update.message === null) {
+                const deletedMsg = messageStore.get(update.key.id);
+                if (deletedMsg && !deletedMsg.key.fromMe) {
+                    const sender = deletedMsg.key.participant || deletedMsg.key.remoteJid;
+                    const chat = deletedMsg.key.remoteJid;
+                    
+                    let messageText = "Non-text or Media Message";
+                    if (deletedMsg.message.conversation) {
+                        messageText = deletedMsg.message.conversation;
+                    } else if (deletedMsg.message.extendedTextMessage) {
+                        messageText = deletedMsg.message.extendedTextMessage.text;
+                    }
+
+                    try {
+                        await sock.sendMessage(ownerJid, {
+                            text: `🚨 *ANTI-DELETE DETECTED* 🚨\n\n👤 *Sender:* @${sender.split('@')[0]}\n💬 *Chat:* ${chat}\n\n📝 *Deleted Message:* \n${messageText}`
+                        }, { mentions: [sender] });
+                        console.log(`Captured deleted message from ${sender}`);
+                    } catch (err) {
+                        console.log('Error sending anti-delete notification:', err);
+                    }
+                }
             }
         }
     });
